@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Каталог админ-панель</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.6/handlebars.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/nouislider.min.css">
+    <script src="js/nouislider.min.js"></script>
+    <script src="http://code.jquery.com/jquery-3.2.0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<style>
+    svg.circle {
+
+        fill: transparent;
+        stroke: #dfdcd5;
+        stroke-width: 5;
+        stroke-dasharray: 188px 188px;
+        transition: stroke-dasharray .8s;
+    }
+    circle:nth-child(2n) {
+        stroke: #20c1a8;
+    }
+    .circle-wrap {
+        width: 120px;
+        height: 120px;
+        position: relative;
+    }
+    .circle__text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 28px;
+    }
+
+    /* Modal window */
+    .center {
+        text-align: center;
+    }
+    textarea {
+        max-width: 100%;
+    }
+    .noUi-horizontal {
+        margin-top: 60px;
+        margin-bottom: 80px;
+    }
+    
+</style>
+</head>
+<body>
+
+<!-- <div class="wrap">
+    <div class="container">
+        <div class="row">
+            <h2>Редактировать задачу</h2>
+        </div>
+        <div class="row center-block center">
+            <div class="col-md-12">
+                <h3>Название задачи</h3>
+                <textarea class="form-control" rows="3">{{task}}</textarea>
+                <h3>Прогресс задачи</h3>
+                <div id="slider"></div>
+                
+                <br>
+                <div><button class="btn btn-success btn-save" type="button">Сохранить</button></div>
+            </div>
+
+        </div>
+    </div>
+</div> -->
+
+<div class="wrap">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1 class="page-header">Журнал задач</h1>
+                <div id="result" class="panel-group"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h1 class="page-header">Какой-то график</h1>
+                <canvas id="myChart" width="400" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade edit-current-row" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content" >
+      <div class="wrap" id="modal-task">
+      
+            ...
+        </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<script>
+
+(function(){
+
+    function Task(prop) {
+        this.id = prop.id;
+        this.task = prop.task;
+        this.perc = prop.perc;
+    }
+
+    var data = [
+        {
+            catName: 'Фронтенд',
+            catId: 1,
+            items: [
+                {
+                    id: 1,
+                    task: 'Задача 1',
+                    percCompletion: 75,
+                },
+                {
+                    id: 2,
+                    task: 'Задача 2',
+                    percCompletion: 25,
+                },
+                {
+                    id: 3,
+                    task: 'Задача 3',
+                    percCompletion: 45,
+                },
+
+            ]
+
+        },
+        {
+            catName: 'Бэкенд',
+            catId: 2,
+            items: [
+                {
+                    id: 4,
+                    task: 'Задача 4',
+                    percCompletion: 35,
+                },
+                {
+                    id: 5,
+                    task: 'Задача 5',
+                    percCompletion: 15,
+                },
+                {
+                    id: 6,
+                    task: 'Задача 6',
+                    percCompletion: 65,
+                },
+
+            ]
+
+        },
+    ]
+
+    var circleOpt = {
+        container: '.circle-wrap',
+        textContainer: '.circle__text',
+        resultTag: 'result',
+        circleRadius: 188
+    }
+
+
+    window.onload = function(){
+
+        createTaskTable(data, circleOpt.resultTag);
+
+        var circleCollection = document.querySelectorAll(circleOpt.container);
+
+        circleCollection.forEach(function(val, i, arr){
+            var elem = arr[i];
+            var percent = elem.querySelector(circleOpt.textContainer).innerText;
+            var svgPercent = percent*circleOpt.circleRadius/100;
+            var svgcircle = elem.querySelector('circle:nth-child(2n)');
+
+            svgcircle.style.strokeDasharray = svgPercent+'px 188px';
+        });
+
+    }
+
+    jQuery('#result').click(function(e){
+        var target = e.target;
+
+        if ($(target).hasClass('circle__id') || $(target).hasClass('circle__task') || $(target).hasClass('circle__text')) {
+
+            var _that = target;
+            var currentRow = $(_that).closest('.row')[0];
+            console.log(currentRow)
+            var currentId = currentRow.querySelector('.circle__id').innerText;
+            var currentPerc = currentRow.querySelector('.circle__perc').innerText;
+            var currentTask = currentRow.querySelector('.circle__task').innerText;
+
+            var taskEdit = {
+                id: currentId,
+                task: currentTask,
+                perc: currentPerc, 
+            };
+
+            createModalTask(taskEdit, 'modal-task');
+
+            var slider = document.getElementById('slider');
+
+            noUiSlider.create(slider, {
+                start: [currentPerc],
+                connect: true,
+                range: {
+                    'min': 0,
+                    'max': 100
+                },
+                step: 5,
+                tooltips: true,
+                connect: true,
+                direction: 'ltr',
+                pips: {
+                    mode: 'values',
+                    values: [0, 25, 50, 75, 100],
+                    density: 5
+                }
+
+            });
+
+        }
+    });
+
+    jQuery('#modal-task').click(function(e){
+
+        var target = e.target;
+        console.log(target)
+        if ($(target).hasClass('btn-save')) {
+            var _that = target;
+            var currentRow = $(_that).closest('#modal-task');
+            currentRow = currentRow[0];
+
+            taskProp = {
+                    id: currentRow.querySelector('.circle__id').innerText,
+                    task: currentRow.querySelector('.circle__task').value,
+                    perc: currentRow.querySelector('.noUi-tooltip').innerText,
+                };
+
+            catObj = new Task(taskProp);
+
+            console.log(catObj)
+        }
+    });
+
+
+    function createModalTask(obj, elem) {
+      var sourse = taskModalTemplate.innerHTML;
+      var templateFn = Handlebars.compile(sourse);
+      var template = templateFn(obj);
+      var result = document.getElementById(elem);
+
+      result.innerHTML = template;
+    }
+    
+
+    function createTaskTable(obj, elem) {
+      var sourse = taskTemplate.innerHTML;
+      var templateFn = Handlebars.compile(sourse);
+      var template = templateFn({list: obj});
+      var result = document.getElementById(elem);
+
+      result.innerHTML = template;
+
+      document.querySelector('#itogAllTask').innerHTML = itogTask(obj);
+    }
+
+    function itogTask(obj) {
+        var resultArr = [];
+        var itog;
+
+        obj.forEach(function(val, i, arr) {
+            var tempArr = arr[i]['items'];
+
+            for (var j = 0; j < tempArr.length; j++) {
+                var currentPerc = tempArr[j]['percCompletion'];
+                resultArr.push(currentPerc);
+            }
+        });
+
+        itog = ( resultArr.reduce(function(a, b) {return a+b}) ) / resultArr.length;
+        itog = Math.round(itog);
+
+        return itog;
+    }
+
+})();
+
+</script>
+
+<script>
+    var ctx = document.getElementById("myChart");
+    var myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+        labels: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"],
+        datasets: [
+                    {
+                        label: "My First dataset",
+                        fill: false,
+                        lineTension: 0.1,
+                        backgroundColor: "rgba(75,192,192,0.4)",
+                        borderColor: "rgba(75,192,192,1)",
+                        borderCapStyle: 'butt',
+                        borderDash: [],
+                        borderDashOffset: 0.0,
+                        borderJoinStyle: 'miter',
+                        pointBorderColor: "rgba(75,192,192,1)",
+                        pointBackgroundColor: "#fff",
+                        pointBorderWidth: 1,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                        pointHoverBorderColor: "rgba(220,220,220,1)",
+                        pointHoverBorderWidth: 2,
+                        pointRadius: 1,
+                        pointHitRadius: 10,
+                        data: [10, 20, 59, 80, 81, 56, 55, 100],
+                        spanGaps: false,
+                    }
+                ]
+            },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true
+                            }
+                        }]
+                    }
+                }
+            });
+</script>
+
+<!-- Templates -->
+<script type="text/x-handlebars-template" id="taskTemplate">
+
+
+    <div class="panel-group">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <div class="row panel-title">
+            <div class="col-md-1">id</div>
+            <div class="col-md-9">Задача</div>
+            <div class="col-md-2">% выполнения</div>
+          </div>
+        </div>
+      </div>
+
+      {{#each list}}
+      <div class="panel panel-default">
+        <div class="panel-heading" role="tab">
+          <h4 class="panel-title">
+            <a role="button" data-toggle="collapse" href='#collapse{{catId}}'>
+              Раздел: {{catName}}
+            </a>
+          </h4>
+        </div>
+        <div id="collapse{{catId}}" class="panel-collapse collapse">
+          <div class="panel-body">
+
+            {{#each items}}
+            <div class="row">
+                <div class="col-md-1 circle__id" data-toggle="modal" data-target=".edit-current-row">{{id}}</div>
+                <div class="col-md-9 circle__task" data-toggle="modal" data-target=".edit-current-row">{{task}}</div>
+                <div class="col-md-2 circle__perc">
+                  <div class="circle-wrap">
+                      <svg class="circle">
+                        <circle transform="rotate(-90)" r="30" cx="-60" cy="60"></circle>
+                        <circle transform="rotate(-90)" style="stroke-dasharray: 0 188px;" r="30" cx="-60" cy="60"></circle>
+                      </svg>
+                      <span class="circle__text" data-toggle="modal" data-target=".edit-current-row">{{percCompletion}}</span>
+                  </div>
+                </div>
+            </div>
+          {{/each}}
+
+          </div>
+        </div>
+      </div>
+      {{/each}}
+
+      <div class="panel" id="itogTask">
+        <div class="col-md-4 panel-heading">
+          <h4 class="panel-title">Проект в целом:</h4>
+        </div>
+        <div class="col-md-8 panel-heading">
+          <div class="circle-wrap">
+              <svg class="circle">
+                <circle transform="rotate(-90)" r="30" cx="-60" cy="60"></circle>
+                <circle transform="rotate(-90)" style="stroke-dasharray: 0 188px;" r="30" cx="-60" cy="60"></circle>
+              </svg>
+              <span class="circle__text" id="itogAllTask"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+</script>
+
+<script type="text/x-handlebars-template" id="taskModalTemplate">
+
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Редактировать задачу</h4>
+      </div>
+
+    <div class="row center-block center">
+        <div class="col-md-12">
+            <div class="circle__id hidden">{{id}}</div>
+            <h3>Название задачи</h3>
+            <textarea class="form-control circle__task" rows="3">{{task}}</textarea>
+            <h3>Прогресс задачи</h3>
+            <div id="slider"></div>
+            
+            <div><button class="btn btn-success btn-save" type="button">Сохранить</button></div>
+            <br>
+        </div>
+    </div>
+
+</script>
+
+</body>
+</html>
